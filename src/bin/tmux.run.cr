@@ -33,8 +33,8 @@ struct CommandResult
   include YAML::Serializable
 
   property command : String
-  property stdout : String # Since a true PTY merges streams into one multiplexed visual device,
-  property stderr : String # stderr flows natively into stdout, mimicking a physical monitor.
+  property stdout : String 
+  property stderr : String 
   property exit_code : Int32
 
   def initialize(@command, @stdout, @stderr, @exit_code)
@@ -53,13 +53,7 @@ class RealPtyCommand
     @status_path = "/tmp/pty_status_#{run_id}_#{index}.txt"
   end
 
-  # Orchestrates an isolated inner shell inside a newly spawned PTY environment.
-  # We pass a programmatic trap to catch the exit status file out of the loop.
   def execute_inside_pty : Tuple(String, Int32)
-    master_fd = 0
-    slave_fd = 0
-
-    # Allocate a genuine kernel-level master/slave pseudo-terminal interface
     if C.openpty(out master_fd, out slave_fd, nil, nil, nil) == -1
       raise "Error: OS failed to allocate high-precision PTY descriptors."
     end
@@ -68,36 +62,26 @@ class RealPtyCommand
     if pid < 0
       raise "Error: OS process fork failed."
     elsif pid == 0
-      # --- CHILD PROCESS PATH ---
-      # Steer child file descriptors (0, 1, 2) straight into the slave PTY device
       C.login_tty(slave_fd)
-      
-      # Run command and serialize exit code across the boundary
       Process.exec("/bin/sh", ["-c", "( #{@raw_string} ); echo $? > #{@status_path}"])
       C._exit(1)
     else
-      # --- PARENT PROCESS PATH ---
-      # Close parent's handle to the slave side to avoid descriptor leak hangs
       IO::FileDescriptor.new(slave_fd, close_on_finalize: true).close
 
-      # Bind a crystal IO reader interface to the master PTY device
       master_io = IO::FileDescriptor.new(master_fd, close_on_finalize: true)
       buffer = IO::Memory.new
 
-      # Read raw output from the allocated pseudo-terminal device loop
       begin
-        # Read available byte buffers directly from the terminal ring buffer
         io_buffer = Bytes.new(4096)
         while (bytes_read = master_io.read(io_buffer)) > 0
           buffer.write(io_buffer[0, bytes_read])
         end
       rescue IO::Error
-        # EIO error safely caught when the child exits and drops the slave descriptor
+        # EIO error caught when slave descriptor closes
       end
 
-      # Synchronize: block loop until status file finishes syncing to the file table
       while !File.exists?(@status_path)
-        sleep 0.05
+        sleep 50.milliseconds
       end
 
       exit_code = File.read(@status_path).strip.to_i
@@ -108,17 +92,14 @@ class RealPtyCommand
   end
 end
 
-# Abstracts the right-hand Tmux layout where visual keystrokes are sent
 class TmuxVisualPane
   getter id : String
 
   def initialize
-    # -h opens the vertical split window down the middle on the right half
     @id = `tmux split-window -h -P 'bash'`.strip
   end
 
   def stream_command_mirror(cmd_str : String)
-    # Reflect text output inside the live view pane for visibility
     Process.run("tmux", ["send-keys", "-t", @id, "echo -e '\\n\\e[1;34m[Running PTY]: #{cmd_str.gsub("'", "'\\''")}\\e[0m'; ", "Enter"])
   end
 
@@ -155,14 +136,11 @@ class HighPrecisionRunner
     @commands.each_with_index do |cmd_str, index|
       puts "Processing inside PTY #{index + 1}/#{@commands.size}: '#{cmd_str}'"
       
-      # Print visually to the companion pane
       @pane.stream_command_mirror(cmd_str)
 
-      # Build our isolated PTY proxy execution context
       cmd = RealPtyCommand.new(cmd_str, index, @run_id)
       raw_pty_output, exit_code = cmd.execute_inside_pty
 
-      # Stream output text straight to the right pane visual layout
       unless raw_pty_output.empty?
         Process.run("tmux", ["send-keys", "-t", @pane.id, raw_pty_output, "Enter"])
       end
@@ -170,7 +148,7 @@ class HighPrecisionRunner
       @results << CommandResult.new(
         command: cmd_str,
         stdout: raw_pty_output,
-        stderr: "", # Merged into stdout by standard PTY hardware constraints
+        stderr: "", 
         exit_code: exit_code
       )
 
@@ -205,8 +183,9 @@ if ARGV.size < 2
   exit 1
 end
 
-output_file = ARGV
-commands_to_run = ARGV[1..]
+output_file = ARGV[0]       # Fix applied here: string index
+commands_to_run = ARGV[1..] # Slice for commands array
 
 runner = HighPrecisionRunner.new(commands_to_run, output_file)
 runner.run!
+
