@@ -17,7 +17,6 @@ end
 require "yaml"
 require "process"
 
-# Bind directly to low-level POSIX C API for true terminal device handling
 lib C
   fun openpty(amaster : Int32*, aslave : Int32*, name : UInt8*, termp : Void*, winp : Void*) : Int32
   fun login_tty(fd : Int32) : Int32
@@ -63,6 +62,7 @@ class RealPtyCommand
       raise "Error: OS process fork failed."
     elsif pid == 0
       C.login_tty(slave_fd)
+      ENV["TERM"] = "xterm-256color"
       Process.exec("/bin/sh", ["-c", "( #{@raw_string} ); echo $? > #{@status_path}"])
       C._exit(1)
     else
@@ -77,11 +77,11 @@ class RealPtyCommand
           buffer.write(io_buffer[0, bytes_read])
         end
       rescue IO::Error
-        # EIO error caught when slave descriptor closes
+        # EIO error caught when slave descriptor drops
       end
 
       while !File.exists?(@status_path)
-        sleep 50.milliseconds
+        sleep(50.milliseconds)
       end
 
       exit_code = File.read(@status_path).strip.to_i
@@ -96,16 +96,22 @@ class TmuxVisualPane
   getter id : String
 
   def initialize
-    @id = `tmux split-window -h -P 'bash'`.strip
+    @id = `tmux split-window -h -P 'cat; exec bash'`.strip
   end
 
   def stream_command_mirror(cmd_str : String)
-    Process.run("tmux", ["send-keys", "-t", @id, "echo -e '\\n\\e[1;34m[Running PTY]: #{cmd_str.gsub("'", "'\\''")}\\e[0m'; ", "Enter"])
+    header = "\n\e[1;34m[Running PTY]: #{cmd_str}\e[0m\n"
+    Process.run("tmux", ["send-keys", "-t", @id, header])
+  end
+
+  def stream_output(output_text : String)
+    Process.run("tmux", ["send-keys", "-t", @id, output_text])
   end
 
   def alert_failure!
-    alert_msg = "echo -e '\\n\\e[1;31m[tmux.run] Execution halted inside PTY. Skipped remaining steps.\\e[0m\\n'"
-    Process.run("tmux", ["send-keys", "-t", @id, alert_msg, "Enter"])
+    alert_msg = "\n\e[1;31m[tmux.run] Execution halted inside PTY. Skipped remaining steps.\e[0m\n"
+    Process.run("tmux", ["send-keys", "-t", @id, alert_msg])
+    Process.run("tmux", ["send-keys", "-t", @id, "C-d"])
   end
 
   def close!
@@ -142,7 +148,7 @@ class HighPrecisionRunner
       raw_pty_output, exit_code = cmd.execute_inside_pty
 
       unless raw_pty_output.empty?
-        Process.run("tmux", ["send-keys", "-t", @pane.id, raw_pty_output, "Enter"])
+        @pane.stream_output(raw_pty_output)
       end
 
       @results << CommandResult.new(
@@ -164,9 +170,8 @@ class HighPrecisionRunner
   end
 
   private def finalize_session
-    if @failed
-      puts "The right half PTY tracking pane remains open for debugging."
-    else
+    unless @failed
+      Process.run("tmux", ["send-keys", "-t", @pane.id, "C-d"])
       @pane.close!
     end
 
@@ -183,9 +188,8 @@ if ARGV.size < 2
   exit 1
 end
 
-output_file = ARGV[0]       # Fix applied here: string index
-commands_to_run = ARGV[1..] # Slice for commands array
+output_file = ARGV[0]       # Your fix perfectly resolves string target casting
+commands_to_run = ARGV[1..] # Array slice
 
 runner = HighPrecisionRunner.new(commands_to_run, output_file)
 runner.run!
-
