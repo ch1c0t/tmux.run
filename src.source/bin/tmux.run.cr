@@ -1,148 +1,165 @@
 require "yaml"
 require "process"
 
+# Bind directly to low-level POSIX C API for true terminal device handling
+lib C
+  fun openpty(amaster : Int32*, aslave : Int32*, name : UInt8*, termp : Void*, winp : Void*) : Int32
+  fun login_tty(fd : Int32) : Int32
+  fun fork : Int32
+  fun _exit(status : Int32) : NoReturn
+end
+
 # =============================================================================
 # 1. DATA STRUCTURES
 # =============================================================================
 
-# Represents the final serialized log format for YAML output
 struct CommandResult
   include YAML::Serializable
 
   property command : String
-  property stdin : String
-  property stdout : String
-  property stderr : String
+  property stdout : String # Since a true PTY merges streams into one multiplexed visual device,
+  property stderr : String # stderr flows natively into stdout, mimicking a physical monitor.
   property exit_code : Int32
 
-  def initialize(@command, @stdin, @stdout, @stderr, @exit_code)
+  def initialize(@command, @stdout, @stderr, @exit_code)
   end
 end
 
 # =============================================================================
-# 2. DOMAIN CLASSES
+# 2. THE REAL PTY ALLOCATION ENGINE
 # =============================================================================
 
-# Encapsulates a single command text and its unique temp-file tracking lifecycle
-class LoggedCommand
+class RealPtyCommand
   getter raw_string : String
-  getter stdout_path : String
-  getter stderr_path : String
   getter status_path : String
 
   def initialize(@raw_string, index : Int32, run_id : Int64)
-    @stdout_path = "/tmp/tmux_run_out_#{run_id}_#{index}.txt"
-    @stderr_path = "/tmp/tmux_run_err_#{run_id}_#{index}.txt"
-    @status_path = "/tmp/tmux_run_status_#{run_id}_#{index}.txt"
+    @status_path = "/tmp/pty_status_#{run_id}_#{index}.txt"
   end
 
-  # Wraps the raw shell command to route standard streams and store the exit code
-  def wrapped_payload : String
-    "( #{@raw_string} ) > #{@stdout_path} 2> #{@stderr_path}; echo $? > #{@status_path}"
-  end
+  # Orchestrates an isolated inner shell inside a newly spawned PTY environment.
+  # We pass a programmatic trap to catch the exit status file out of the loop.
+  def execute_inside_pty : Tuple(String, Int32)
+    master_fd = 0
+    slave_fd = 0
 
-  # Blocks execution cleanly until the external shell finishes and writes its status
-  def wait_for_completion
-    while !File.exists?(@status_path)
-      sleep 100.milliseconds
+    # Allocate a genuine kernel-level master/slave pseudo-terminal interface
+    if C.openpty(out master_fd, out slave_fd, nil, nil, nil) == -1
+      raise "Error: OS failed to allocate high-precision PTY descriptors."
     end
-    sleep 100.milliseconds # Small safety delay to let the OS finalize file flush operations
-  end
 
-  # Captures the raw file contents safely, handling missing files gracefully
-  def read_outputs : Tuple(String, String, Int32)
-    stdout_content = File.exists?(@stdout_path) ? File.read(@stdout_path) : ""
-    stderr_content = File.exists?(@stderr_path) ? File.read(@stderr_path) : ""
-    exit_code = File.exists?(@status_path) ? File.read(@status_path).strip.to_i : -1
-    
-    {stdout_content, stderr_content, exit_code}
-  end
+    pid = C.fork
+    if pid < 0
+      raise "Error: OS process fork failed."
+    elsif pid == 0
+      # --- CHILD PROCESS PATH ---
+      # Steer child file descriptors (0, 1, 2) straight into the slave PTY device
+      C.login_tty(slave_fd)
+      
+      # Run command and serialize exit code across the boundary
+      Process.exec("/bin/sh", ["-c", "( #{@raw_string} ); echo $? > #{@status_path}"])
+      C._exit(1)
+    else
+      # --- PARENT PROCESS PATH ---
+      # Close parent's handle to the slave side to avoid descriptor leak hangs
+      IO::FileDescriptor.new(slave_fd, close_on_finalize: true).close
 
-  # Self-contained cleanup logic to purge the disk footprint
-  def cleanup!
-    File.delete(@stdout_path) if File.exists?(@stdout_path)
-    File.delete(@stderr_path) if File.exists?(@stderr_path)
-    File.delete(@status_path) if File.exists?(@status_path)
+      # Bind a crystal IO reader interface to the master PTY device
+      master_io = IO::FileDescriptor.new(master_fd, close_on_finalize: true)
+      buffer = IO::Memory.new
+
+      # Read raw output from the allocated pseudo-terminal device loop
+      begin
+        # Read available byte buffers directly from the terminal ring buffer
+        io_buffer = Bytes.new(4096)
+        while (bytes_read = master_io.read(io_buffer)) > 0
+          buffer.write(io_buffer[0, bytes_read])
+        end
+      rescue IO::Error
+        # EIO error safely caught when the child exits and drops the slave descriptor
+      end
+
+      # Synchronize: block loop until status file finishes syncing to the file table
+      while !File.exists?(@status_path)
+        sleep 0.05
+      end
+
+      exit_code = File.read(@status_path).strip.to_i
+      File.delete(@status_path) if File.exists?(@status_path)
+
+      {buffer.to_s, exit_code}
+    end
   end
 end
 
-# Abstracts the right-hand Tmux pane layout, lifecycle, and signaling
-class TmuxPane
+# Abstracts the right-hand Tmux layout where visual keystrokes are sent
+class TmuxVisualPane
   getter id : String
 
   def initialize
-    # -h creates a vertical split (placing the new pane on the right)
-    # -P forces tmux to instantly print only the unique Pane ID string back to us
+    # -h opens the vertical split window down the middle on the right half
     @id = `tmux split-window -h -P 'bash'`.strip
   end
 
-  # Passes raw string payloads straight to the target pane's PTY input buffer
-  def send_keys(payload : String)
-    Process.run("tmux", ["send-keys", "-t", @id, payload, "Enter"])
+  def stream_command_mirror(cmd_str : String)
+    # Reflect text output inside the live view pane for visibility
+    Process.run("tmux", ["send-keys", "-t", @id, "echo -e '\\n\\e[1;34m[Running PTY]: #{cmd_str.gsub("'", "'\\''")}\\e[0m'; ", "Enter"])
   end
 
-  # Displays a bright Red warning block directly inside the target interactive pane
   def alert_failure!
-    alert_msg = "echo -e '\\n\\e[1;31m[tmux.run] Execution halted here. Remaining commands skipped.\\e[0m\\n'"
-    send_keys(alert_msg)
+    alert_msg = "echo -e '\\n\\e[1;31m[tmux.run] Execution halted inside PTY. Skipped remaining steps.\\e[0m\\n'"
+    Process.run("tmux", ["send-keys", "-t", @id, alert_msg, "Enter"])
   end
 
-  # Safely tears down and closes the pane window
   def close!
     Process.run("tmux", ["kill-pane", "-t", @id])
   end
 end
 
 # =============================================================================
-# 3. ORCHESTRATION ENGINE
+# 3. RUNNER ENGINE
 # =============================================================================
 
-# Coordinates the execution lifecycle across the Pane and the Commands list
-class ExecutionRunner
+class HighPrecisionRunner
   def initialize(@commands : Array(String), @output_yaml_path : String)
-    # Ensure this is executing from inside an active tmux workspace
     unless ENV.has_key?("TMUX")
       puts "Error: This program must be run inside an active Tmux session."
       exit 1
     end
 
-    @pane = TmuxPane.new
+    @pane = TmuxVisualPane.new
     @run_id = Process.pid
     @results = [] of CommandResult
     @failed = false
-    
-    puts "Opened right half execution pane: #{@pane.id}"
+
+    puts "Allocated Right Visual Tmux Pane: #{@pane.id}"
   end
 
   def run!
     @commands.each_with_index do |cmd_str, index|
-      puts "Running command #{index + 1}/#{@commands.size}: '#{cmd_str}'"
+      puts "Processing inside PTY #{index + 1}/#{@commands.size}: '#{cmd_str}'"
       
-      # Setup tracking structure
-      cmd = LoggedCommand.new(cmd_str, index, @run_id)
-      
-      # Feed the execution payload to the right pane
-      @pane.send_keys(cmd.wrapped_payload)
-      
-      # Synchronize: block loop here until pane responds
-      cmd.wait_for_completion
-      
-      # Read the resulting states
-      stdout_text, stderr_text, exit_code = cmd.read_outputs
-      cmd.cleanup!
+      # Print visually to the companion pane
+      @pane.stream_command_mirror(cmd_str)
 
-      # Construct execution record
+      # Build our isolated PTY proxy execution context
+      cmd = RealPtyCommand.new(cmd_str, index, @run_id)
+      raw_pty_output, exit_code = cmd.execute_inside_pty
+
+      # Stream output text straight to the right pane visual layout
+      unless raw_pty_output.empty?
+        Process.run("tmux", ["send-keys", "-t", @pane.id, raw_pty_output, "Enter"])
+      end
+
       @results << CommandResult.new(
         command: cmd_str,
-        stdin: "", 
-        stdout: stdout_text,
-        stderr: stderr_text,
+        stdout: raw_pty_output,
+        stderr: "", # Merged into stdout by standard PTY hardware constraints
         exit_code: exit_code
       )
 
-      # Handle command failure conditions
       if exit_code != 0
-        puts "\n[!] Command failed with exit code #{exit_code}. Halting execution flow."
+        puts "\n[!] PTY Command broke with code #{exit_code}. Terminating automation."
         @pane.alert_failure!
         @failed = true
         break
@@ -154,13 +171,13 @@ class ExecutionRunner
 
   private def finalize_session
     if @failed
-      puts "The right-hand execution pane has been left open for debugging."
+      puts "The right half PTY tracking pane remains open for debugging."
     else
       @pane.close!
     end
 
     File.write(@output_yaml_path, @results.to_yaml)
-    puts "Execution logs saved to: #{@output_yaml_path}"
+    puts "High-precision PTY serialization complete: #{@output_yaml_path}"
   end
 end
 
@@ -172,9 +189,8 @@ if ARGV.size < 2
   exit 1
 end
 
-output_file = ARGV[0]
+output_file = ARGV
 commands_to_run = ARGV[1..]
 
-# Fire up the engine
-runner = ExecutionRunner.new(commands_to_run, output_file)
+runner = HighPrecisionRunner.new(commands_to_run, output_file)
 runner.run!
