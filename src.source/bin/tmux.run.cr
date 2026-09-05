@@ -1,6 +1,8 @@
 require "yaml"
 require "process"
 
+require "../tmux"
+
 lib C
   fun openpty(amaster : Int32*, aslave : Int32*, name : UInt8*, termp : Void*, winp : Void*) : Int32
   fun login_tty(fd : Int32) : Int32
@@ -76,33 +78,6 @@ class RealPtyCommand
   end
 end
 
-class TmuxVisualPane
-  getter id : String
-
-  def initialize
-    @id = `tmux split-window -h -P 'cat; exec bash'`.strip
-  end
-
-  def stream_command_mirror(cmd_str : String)
-    header = "\n\e[1;34m[Running PTY]: #{cmd_str}\e[0m\n"
-    Process.run("tmux", ["send-keys", "-t", @id, header])
-  end
-
-  def stream_output(output_text : String)
-    Process.run("tmux", ["send-keys", "-t", @id, output_text])
-  end
-
-  def alert_failure!
-    alert_msg = "\n\e[1;31m[tmux.run] Execution halted inside PTY. Skipped remaining steps.\e[0m\n"
-    Process.run("tmux", ["send-keys", "-t", @id, alert_msg])
-    Process.run("tmux", ["send-keys", "-t", @id, "C-d"])
-  end
-
-  def close!
-    Process.run("tmux", ["kill-pane", "-t", @id])
-  end
-end
-
 # =============================================================================
 # 3. RUNNER ENGINE
 # =============================================================================
@@ -114,7 +89,7 @@ class HighPrecisionRunner
       exit 1
     end
 
-    @pane = TmuxVisualPane.new
+    @pane = Tmux::Pane.new
     @run_id = Process.pid
     @results = [] of CommandResult
     @failed = false
