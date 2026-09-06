@@ -19,7 +19,7 @@ class Runner
       
       @pane.stream_command_mirror(cmd_str)
   
-      cmd = RealPtyCommand.new(cmd_str, index, @run_id)
+      cmd = PtyCommand.new(cmd_str, index, @run_id)
       raw_pty_output, exit_code = cmd.execute_inside_pty
   
       unless raw_pty_output.empty?
