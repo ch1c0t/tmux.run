@@ -15,7 +15,7 @@ def initialize
 
   # Start a detached background file tracker streaming directly onto the pane layout.
   # The leading space prevents the line from being added to your shell history.
-  Process.run("tmux", ["send-keys", "-t", @id, " tail -f #{@log_path} & tail_pid=$!", "Enter"])
+  Process.run("tmux", ["send-keys", "-t", @id, " tail -f -n +1 #{@log_path} & tail_pid=$!", "Enter"])
 end
 
 def stream_command_mirror(cmd_str : String)
