@@ -1,9 +1,17 @@
 class Runner
-  def initialize(@commands : Array(String), @output_yaml_path : String)
+  def initialize(@commands : Array(String))
     unless ENV.has_key?("TMUX")
       puts "Error: This program must be run inside an active Tmux session."
       exit 1
     end
+  
+    # Derive output paths dynamically using USER environment variable and Unix timestamp
+    username = ENV["USER"]? || "default"
+    timestamp = Time.local.to_unix
+    
+    target_dir = "/tmp/#{username}/tmux.run"
+    FileUtils.mkdir_p(target_dir) # Ensure directory structure exists safely
+    @output_yaml_path = "#{target_dir}/#{timestamp}.yaml"
   
     @pane = Tmux::Pane.new
     @run_id = Process.pid

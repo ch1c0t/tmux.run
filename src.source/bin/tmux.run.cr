@@ -1,5 +1,6 @@
 require "yaml"
 require "process"
+require "file_utils"
 
 require "../c"
 require "../command_result"
@@ -12,8 +13,6 @@ if ARGV.size < 2
   exit 1
 end
 
-output_file = ARGV[0]
-commands_to_run = ARGV[1..]
-
-runner = Runner.new(commands_to_run, output_file)
+commands_to_run = ARGV
+runner = Runner.new(commands_to_run)
 runner.run!
