@@ -6,7 +6,11 @@ def initialize(@commands : Array(String))
 
   # Derive output paths dynamically using USER environment variable and Unix timestamp
   username = ENV["USER"]? || "default"
-  timestamp = Time.local.to_unix
+
+  now = Time.local
+  calendar_str = now.to_s("%Y%m%d_%H%M%S")
+  unixtime = now.to_unix
+  timestamp = "#{calendar_str}.#{unixtime}"
   
   target_dir = "/tmp/#{username}/tmux.run"
   FileUtils.mkdir_p(target_dir) # Ensure directory structure exists safely
