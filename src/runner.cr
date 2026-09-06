@@ -1,4 +1,19 @@
 class Runner
+  module Finish
+    private def finish
+      if @failed
+        puts "The right half PTY tracking pane remains open for debugging."
+      else
+        @pane.close!
+      end
+    
+      File.write(@output_yaml_path, @results.to_yaml)
+      puts "High-precision PTY serialization complete: #{@output_yaml_path}"
+    end
+  end
+
+  include Finish
+  
   def initialize(@commands : Array(String))
     unless ENV.has_key?("TMUX")
       puts "Error: This program must be run inside an active Tmux session."
@@ -53,16 +68,6 @@ class Runner
       end
     end
   
-    finalize_session
-  end
-  
-  private def finalize_session
-    unless @failed
-      Process.run("tmux", ["send-keys", "-t", @pane.id, "C-d"])
-      @pane.close!
-    end
-  
-    File.write(@output_yaml_path, @results.to_yaml)
-    puts "High-precision PTY serialization complete: #{@output_yaml_path}"
+    finish
   end
 end
