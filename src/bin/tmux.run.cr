@@ -28,8 +28,8 @@ if ARGV.size < 2
   exit 1
 end
 
-output_file = ARGV[0]       # Your fix perfectly resolves string target casting
-commands_to_run = ARGV[1..] # Array slice
+output_file = ARGV[0]
+commands_to_run = ARGV[1..]
 
 runner = Runner.new(commands_to_run, output_file)
 runner.run!
