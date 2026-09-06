@@ -1,15 +1,15 @@
 ---
 - command: ls --color=always -la
-  stdout: "total 56\r\ndrwxrwxr-x  8 om om 4096 Sep  6 01:43 \e[0m\e[01;34m.\e[0m\r\ndrwxr-xr-x
+  stdout: "total 56\r\ndrwxrwxr-x  8 om om 4096 Sep  6 14:32 \e[0m\e[01;34m.\e[0m\r\ndrwxr-xr-x
     52 om om 4096 Sep  5 22:25 \e[01;34m..\e[0m\r\ndrwxrwxr-x  2 om om 4096 Sep  5
-    22:25 \e[01;34mbgem\e[0m\r\ndrwxrwxr-x  2 om om 4096 Sep  6 02:42 \e[01;34mbin\e[0m\r\n-rw-rw-r--
+    22:25 \e[01;34mbgem\e[0m\r\ndrwxrwxr-x  2 om om 4096 Sep  6 14:36 \e[01;34mbin\e[0m\r\n-rw-rw-r--
     \ 1 om om   88 Sep  5 22:25 Gemfile\r\n-rw-rw-r--  1 om om  748 Sep  5 22:26 Gemfile.lock\r\ndrwxrwxr-x
-    \ 8 om om 4096 Sep  6 02:42 \e[01;34m.git\e[0m\r\n-rw-rw-r--  1 om om   11 Sep
-    \ 5 22:25 .gitignore\r\nsrwxrwxr-x  1 om om    0 Sep  6 00:28 \e[01;35m.nvim.sock\e[0m\r\n-rw-r--r--
-    \ 1 om om 1150 Sep  6 02:43 pty_output.yaml\r\n-rw-rw-r--  1 om om  116 Sep  5
-    22:25 Rakefile\r\n-rw-rw-r--  1 om om  154 Sep  6 02:42 shard.yml\r\ndrwxrwxr-x
+    \ 8 om om 4096 Sep  6 14:36 \e[01;34m.git\e[0m\r\n-rw-rw-r--  1 om om   11 Sep
+    \ 5 22:25 .gitignore\r\nsrwxrwxr-x  1 om om    0 Sep  6 14:32 \e[01;35m.nvim.sock\e[0m\r\n-rw-r--r--
+    \ 1 om om 1150 Sep  6 14:37 pty_output.yaml\r\n-rw-rw-r--  1 om om  116 Sep  5
+    22:25 Rakefile\r\n-rw-rw-r--  1 om om  154 Sep  6 14:36 shard.yml\r\ndrwxrwxr-x
     \ 2 om om 4096 Sep  5 22:25 \e[01;34mspec\e[0m\r\ndrwxrwxr-x  3 om om 4096 Sep
-    \ 6 01:39 \e[01;34msrc\e[0m\r\ndrwxrwxr-x  4 om om 4096 Sep  6 01:39 \e[01;34msrc.source\e[0m\r\n"
+    \ 6 14:36 \e[01;34msrc\e[0m\r\ndrwxrwxr-x  4 om om 4096 Sep  6 14:36 \e[01;34msrc.source\e[0m\r\n"
   stderr: ""
   exit_code: 0
 - command: npm --version
