@@ -7,11 +7,33 @@ class Runner
         @pane.close!
       end
     
-      File.write(@output_yaml_path, @results.to_yaml)
-      puts "High-precision PTY serialization complete: #{@output_yaml_path}"
+      File.write(output_yaml_path, @results.to_yaml)
+      puts "High-precision PTY serialization complete: #{output_yaml_path}"
     end
   end
 
+  module Getters
+    memoize def username : String
+      ENV["USER"]? || "default"
+    end
+    
+    memoize def target_dir : String
+      dir = "/tmp/#{username}/tmux.run"
+      FileUtils.mkdir_p dir
+      dir
+    end
+    
+    memoize def output_yaml_path : String
+      now = Time.local
+      calendar_str = now.to_s("%Y%m%d_%H%M%S")
+      unixtime = now.to_unix
+      timestamp = "#{calendar_str}.#{unixtime}"
+    
+      "#{target_dir}/#{timestamp}.yaml"
+    end
+  end
+
+  include Getters
   include Finish
   
   def initialize(@commands : Array(String))
@@ -19,18 +41,6 @@ class Runner
       puts "Error: This program must be run inside an active Tmux session."
       exit 1
     end
-  
-    # Derive output paths dynamically using USER environment variable and Unix timestamp
-    username = ENV["USER"]? || "default"
-  
-    now = Time.local
-    calendar_str = now.to_s("%Y%m%d_%H%M%S")
-    unixtime = now.to_unix
-    timestamp = "#{calendar_str}.#{unixtime}"
-    
-    target_dir = "/tmp/#{username}/tmux.run"
-    FileUtils.mkdir_p(target_dir) # Ensure directory structure exists safely
-    @output_yaml_path = "#{target_dir}/#{timestamp}.yaml"
   
     @pane = Tmux::Pane.new
     @run_id = Process.pid

@@ -5,6 +5,6 @@ private def finish
     @pane.close!
   end
 
-  File.write(@output_yaml_path, @results.to_yaml)
-  puts "High-precision PTY serialization complete: #{@output_yaml_path}"
+  File.write(output_yaml_path, @results.to_yaml)
+  puts "High-precision PTY serialization complete: #{output_yaml_path}"
 end

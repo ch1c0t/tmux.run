@@ -1,3 +1,4 @@
+include Getters
 include Finish
 
 def initialize(@commands : Array(String))
@@ -5,18 +6,6 @@ def initialize(@commands : Array(String))
     puts "Error: This program must be run inside an active Tmux session."
     exit 1
   end
-
-  # Derive output paths dynamically using USER environment variable and Unix timestamp
-  username = ENV["USER"]? || "default"
-
-  now = Time.local
-  calendar_str = now.to_s("%Y%m%d_%H%M%S")
-  unixtime = now.to_unix
-  timestamp = "#{calendar_str}.#{unixtime}"
-  
-  target_dir = "/tmp/#{username}/tmux.run"
-  FileUtils.mkdir_p(target_dir) # Ensure directory structure exists safely
-  @output_yaml_path = "#{target_dir}/#{timestamp}.yaml"
 
   @pane = Tmux::Pane.new
   @run_id = Process.pid
