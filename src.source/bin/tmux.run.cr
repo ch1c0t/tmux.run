@@ -1,6 +1,7 @@
 require "yaml"
 require "process"
 
+require "../command_result"
 require "../pty_command"
 require "../tmux"
 require "../runner"
@@ -10,22 +11,6 @@ lib C
   fun login_tty(fd : Int32) : Int32
   fun fork : Int32
   fun _exit(status : Int32) : NoReturn
-end
-
-# =============================================================================
-# 1. DATA STRUCTURES
-# =============================================================================
-
-struct CommandResult
-  include YAML::Serializable
-
-  property command : String
-  property stdout : String 
-  property stderr : String 
-  property exit_code : Int32
-
-  def initialize(@command, @stdout, @stderr, @exit_code)
-  end
 end
 
 # =============================================================================

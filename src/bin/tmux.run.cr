@@ -17,6 +17,7 @@ end
 require "yaml"
 require "process"
 
+require "../command_result"
 require "../pty_command"
 require "../tmux"
 require "../runner"
@@ -32,17 +33,6 @@ end
 # 1. DATA STRUCTURES
 # =============================================================================
 
-struct CommandResult
-  include YAML::Serializable
-
-  property command : String
-  property stdout : String 
-  property stderr : String 
-  property exit_code : Int32
-
-  def initialize(@command, @stdout, @stderr, @exit_code)
-  end
-end
 
 # =============================================================================
 # 4. ENTRY POINT
