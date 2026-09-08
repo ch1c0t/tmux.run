@@ -26,5 +26,4 @@ def close!
   Process.run("tmux", ["send-keys", "-t", @id, " kill $tail_pid", "Enter"])
   sleep(50.milliseconds)
   Process.run("tmux", ["kill-pane", "-t", @id])
-  File.delete(@log_path) if File.exists?(@log_path)
 end

@@ -30,7 +30,6 @@ module Tmux
         Process.run("tmux", ["send-keys", "-t", @id, " kill $tail_pid", "Enter"])
         sleep(50.milliseconds)
         Process.run("tmux", ["kill-pane", "-t", @id])
-        File.delete(@log_path) if File.exists?(@log_path)
       end
     end
   
@@ -38,8 +37,7 @@ module Tmux
     getter log_path : String
     
     def initialize
-      run_id = Process.pid
-      @log_path = "/tmp/tmux_visual_stream_#{run_id}.log"
+      @log_path = "#{Config.target_dir}/visual_stream.#{Config.timestamp}.log"
       File.write(@log_path, "") 
     
       # FIXED: Split window launches a completely standalone, clean interactive shell session instantly.
