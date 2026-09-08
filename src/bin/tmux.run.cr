@@ -19,6 +19,7 @@ require "process"
 require "file_utils"
 require "memoization"
 
+require "../config"
 require "../c"
 require "../command_result"
 require "../pty_command"

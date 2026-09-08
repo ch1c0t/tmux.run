@@ -7,31 +7,8 @@ class Runner
         @pane.close!
       end
     
-      File.write(output_yaml_path, @results.to_yaml)
-      puts "High-precision PTY serialization complete: #{output_yaml_path}"
-    end
-  end
-
-  module Getters
-    memoize def username : String
-      ENV["USER"]? || "default"
-    end
-    
-    memoize def target_dir : String
-      dir = "/tmp/#{username}/tmux.run"
-      FileUtils.mkdir_p dir
-      dir
-    end
-    
-    memoize def timestamp : String
-      now = Time.local
-      calendar_str = now.to_s("%Y%m%d_%H%M%S")
-      unixtime = now.to_unix
-      "#{calendar_str}.#{unixtime}"
-    end
-    
-    memoize def output_yaml_path : String
-      "#{target_dir}/#{timestamp}.yaml"
+      File.write(Config.output_yaml_path, @results.to_yaml)
+      puts "High-precision PTY serialization complete: #{Config.output_yaml_path}"
     end
   end
 
@@ -71,7 +48,6 @@ class Runner
     end
   end
 
-  include Getters
   include Finish
   include Run
   

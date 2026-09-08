@@ -7,6 +7,3 @@ targets:
   tmux.run:
     main: src/bin/tmux.run.cr
 crystal: ">= 1.15.1"
-dependencies:
-  memoization:
-    github: davidrunger/memoization
