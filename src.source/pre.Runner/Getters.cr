@@ -8,11 +8,13 @@ memoize def target_dir : String
   dir
 end
 
-memoize def output_yaml_path : String
+memoize def timestamp : String
   now = Time.local
   calendar_str = now.to_s("%Y%m%d_%H%M%S")
   unixtime = now.to_unix
-  timestamp = "#{calendar_str}.#{unixtime}"
+  "#{calendar_str}.#{unixtime}"
+end
 
+memoize def output_yaml_path : String
   "#{target_dir}/#{timestamp}.yaml"
 end
