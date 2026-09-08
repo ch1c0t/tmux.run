@@ -57,6 +57,8 @@ class Runner
       exit 1
     end
   
+    FileUtils.mkdir_p(Config.target_dir)
+  
     @pane = Tmux::Pane.new
     @run_id = Process.pid
     @results = [] of CommandResult
