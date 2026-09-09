@@ -40,9 +40,8 @@ module Tmux
       @log_path = "#{Config.target_dir}/#{Config.timestamp}.visual_stream.log"
       File.write(@log_path, "") 
     
-      # FIXED: Split window launches a completely standalone, clean interactive shell session instantly.
-      # This guarantees that the pane can never be destroyed or affected by signals in our parent loop.
-      @id = `tmux split-window -h -P 'exec $SHELL'`.strip
+      detach_flag = Config.change_focus? ? "-d" : ""
+      @id = `tmux split-window -h #{detach_flag} -P 'exec $SHELL'`.strip
       
       # Wait briefly for the target shell prompt to load its rc configurations
       sleep(200.milliseconds)

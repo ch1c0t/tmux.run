@@ -17,4 +17,8 @@ module Config
   def self.output_yaml_path : String
     "#{target_dir}/#{timestamp}.yaml"
   end
+  
+  def self.change_focus? : Bool
+    ENV["TMUXRUN_CHANGE_FOCUS"]? == "true"
+  end
 end
