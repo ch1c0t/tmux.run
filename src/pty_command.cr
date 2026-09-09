@@ -3,7 +3,7 @@ class PtyCommand
   getter status_path : String
   
   def initialize(@raw_string, index : Int32, run_id : Int64)
-    @status_path = "/tmp/pty_status_#{run_id}_#{index}.txt"
+    @status_path = "#{Config.target_dir}/#{Config.timestamp}.pty_status_#{run_id}_#{index}.txt"
   end
   
   def execute_inside_pty : Tuple(String, Int32)

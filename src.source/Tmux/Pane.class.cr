@@ -2,7 +2,7 @@ getter id : String
 getter log_path : String
 
 def initialize
-  @log_path = "#{Config.target_dir}/visual_stream.#{Config.timestamp}.log"
+  @log_path = "#{Config.target_dir}/#{Config.timestamp}.visual_stream.log"
   File.write(@log_path, "") 
 
   # FIXED: Split window launches a completely standalone, clean interactive shell session instantly.
