@@ -5,15 +5,15 @@ def initialize
   @log_path = "#{Config.target_dir}/#{Config.timestamp}.visual_stream.log"
   File.write(@log_path, "") 
 
-  detach_flag = Config.change_focus? ? "-d" : ""
-  @id = `tmux split-window -h #{detach_flag} -P 'exec $SHELL'`.strip
-  
-  # Wait briefly for the target shell prompt to load its rc configurations
-  sleep(200.milliseconds)
+  if existing_id = find_existing_pane_id
+    @id = existing_id
+    clear_lingering_background_jobs
+  else
+    @id = spawn_and_tag_new_pane
+  end
 
-  # Start a detached background file tracker streaming directly onto the pane layout.
-  # The leading space prevents the line from being added to your shell history.
-  Process.run("tmux", ["send-keys", "-t", @id, " tail -f -n +1 #{@log_path} & tail_pid=$!", "Enter"])
+  attach_log_follower
 end
 
-include Methods
+include Private
+include Public
