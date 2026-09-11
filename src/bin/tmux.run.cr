@@ -21,6 +21,7 @@ require "memoization"
 
 require "../config"
 require "../c"
+require "../yaml_block_string_converter"
 require "../command_result"
 require "../pty_command"
 require "../tmux"

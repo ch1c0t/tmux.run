@@ -1,4 +1,13 @@
 class Runner
+  module StripANSI
+    # Regex pattern targeting standard ANSI escape sequence strings
+    def strip_ansi(text : String) : String
+      text
+        .gsub("\r\n", "\n")
+        .gsub(/\e\[[0-9;]*[a-zA-Z]/, "")
+    end
+  end
+
   module Finish
     private def finish
       if @failed
@@ -18,6 +27,8 @@ class Runner
       finish
     end
     
+    include StripANSI
+    
     def run_commands
       @commands.each_with_index do |cmd_str, index|
         puts "Processing inside PTY #{index + 1}/#{@commands.size}: '#{cmd_str}'"
@@ -33,8 +44,7 @@ class Runner
     
         @results << CommandResult.new(
           command: cmd_str,
-          stdout: raw_pty_output,
-          stderr: "",
+          output: strip_ansi(raw_pty_output),
           exit_code: exit_code
         )
     

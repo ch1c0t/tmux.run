@@ -3,6 +3,8 @@ def run!
   finish
 end
 
+include StripANSI
+
 def run_commands
   @commands.each_with_index do |cmd_str, index|
     puts "Processing inside PTY #{index + 1}/#{@commands.size}: '#{cmd_str}'"
@@ -18,8 +20,7 @@ def run_commands
 
     @results << CommandResult.new(
       command: cmd_str,
-      stdout: raw_pty_output,
-      stderr: "",
+      output: strip_ansi(raw_pty_output),
       exit_code: exit_code
     )
 
