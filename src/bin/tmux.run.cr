@@ -17,7 +17,6 @@ end
 require "yaml"
 require "process"
 require "file_utils"
-require "memoization"
 
 require "../config"
 require "../c"
