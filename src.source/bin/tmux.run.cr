@@ -9,7 +9,7 @@ require "../pty_command"
 require "../tmux"
 require "../runner"
 
-if ARGV.size < 2
+if ARGV.size < 1
   puts "Usage: tmux.run \"command 1\" \"command 2\" ..."
   exit 1
 end
