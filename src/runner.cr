@@ -36,10 +36,8 @@ class Runner
         @pane.stream_command_mirror(cmd_str)
     
         cmd = PtyCommand.new(cmd_str, index, @run_id)
-        raw_pty_output, exit_code = cmd.execute_inside_pty
-    
-        unless raw_pty_output.empty?
-          @pane.stream_output(raw_pty_output)
+        raw_pty_output, exit_code = cmd.execute_inside_pty do |live_chunk|
+          @pane.stream_output(live_chunk)
         end
     
         @results << CommandResult.new(
