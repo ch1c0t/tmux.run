@@ -5,7 +5,6 @@ require "file_utils"
 require "../config"
 require "../c"
 require "../command_result"
-require "../pty_command"
 require "../tmux"
 require "../runner"
 

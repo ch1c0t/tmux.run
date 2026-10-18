@@ -11,7 +11,7 @@ def run_commands
     
     @pane.stream_command_mirror(cmd_str)
 
-    cmd = PtyCommand.new(cmd_str, index, @run_id)
+    cmd = PTY::Command.new(cmd_str, index, @run_id)
     raw_pty_output, exit_code = cmd.execute_inside_pty do |live_chunk|
       @pane.stream_output(live_chunk)
     end

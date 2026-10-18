@@ -1,6 +1,6 @@
 version: 2.0
 shards:
-  memoization:
-    git: https://github.com/davidrunger/memoization.git
-    version: 0.0.1
+  pty:
+    git: https://github.com/ch1c0t/crystal.pty.git
+    version: 0.0.0+git.commit.5c5c821f996eb1aa0c8fbe6f9a58f88701d55cb6
 

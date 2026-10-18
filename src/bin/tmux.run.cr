@@ -1,6 +1,6 @@
 require "./tmux.run/*"
 
-VERSION = "0.0.0"
+VERSION = "0.0.1"
 
 case ARGV.size
 when 1
@@ -21,7 +21,6 @@ require "file_utils"
 require "../config"
 require "../c"
 require "../command_result"
-require "../pty_command"
 require "../tmux"
 require "../runner"
 

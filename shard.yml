@@ -1,9 +1,12 @@
 ---
 name: tmux.run
-version: 0.0.0
+version: 0.0.1
 authors:
 - Anatoly Chernov <chertoly@gmail.com>
 targets:
   tmux.run:
     main: src/bin/tmux.run.cr
 crystal: ">= 1.15.1"
+dependencies:
+  pty:
+    github: ch1c0t/crystal.pty
