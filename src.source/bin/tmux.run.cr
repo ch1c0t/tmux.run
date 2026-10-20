@@ -3,7 +3,6 @@ require "process"
 require "file_utils"
 
 require "../config"
-require "../c"
 require "../command_result"
 require "../tmux"
 require "../runner"

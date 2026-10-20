@@ -1,6 +1,6 @@
 ---
 name: tmux.run
-version: 0.0.1
+version: 0.1.0
 authors:
 - Anatoly Chernov <chertoly@gmail.com>
 targets:

@@ -2,5 +2,5 @@ version: 2.0
 shards:
   pty:
     git: https://github.com/ch1c0t/crystal.pty.git
-    version: 0.0.0+git.commit.5c5c821f996eb1aa0c8fbe6f9a58f88701d55cb6
+    version: 0.1.0+git.commit.e26922d2943607268d175aa2b4fe3e2f67ee5fd4
 
