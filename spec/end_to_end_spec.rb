@@ -44,7 +44,7 @@ class TmuxRunE2ESession
                  "printf '%s\\n' $? > #{Shellwords.escape(status_path)}"
 
     send_keys(@root_pane_id, shell_line)
-    send_keys(@root_pane_id, "Enter")
+    press_enter(@root_pane_id)
 
     {stdout_path: stdout_path, status_path: status_path, commands: commands}
   end
@@ -137,6 +137,11 @@ class TmuxRunE2ESession
   def send_keys(target, text)
     _stdout, stderr, status = tmux_process("send-keys", "-t", target, "-l", text)
     raise "tmux send-keys failed: #{stderr}" unless status.success?
+  end
+
+  def press_enter(target)
+    _stdout, stderr, status = tmux_process("send-keys", "-t", target, "Enter")
+    raise "tmux send-keys Enter failed: #{stderr}" unless status.success?
   end
 
   def tmux(*args)
